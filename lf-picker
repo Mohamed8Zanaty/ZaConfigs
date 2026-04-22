@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+TMP=$(mktemp /tmp/lf-pick.XXXXXX)
+OUTPUT_FILE="/tmp/termfilechooser-$(id -u).portal"
+
+alacritty --class file-picker,Alacritty -e lf -selection-path "$TMP"
+
+if [[ -s "$TMP" ]]; then
+    cat "$TMP" > "$OUTPUT_FILE"
+fi
+
+rm -f "$TMP"
