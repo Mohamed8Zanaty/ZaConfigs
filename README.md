@@ -10,6 +10,6 @@ This is My Linux Configs for Arch + bspwm
 - lf file-picker 
 - fastfetch
 - bspwm
-
+- sxhkd
 ## Note
 - You should put lf-picker on /usr/local/bin/ to make it work correctly.
