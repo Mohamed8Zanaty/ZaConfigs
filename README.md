@@ -6,3 +6,4 @@ This is My Linux Configs for Arch + bspwm
 - polybar
 - lf
 - alacritty
+- rofi
