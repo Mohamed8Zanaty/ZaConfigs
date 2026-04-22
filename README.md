@@ -5,3 +5,4 @@ This is My Linux Configs for Arch + bspwm
 - nvim
 - polybar
 - lf
+- alacritty
