@@ -1,0 +1,41 @@
+#! /bin/sh
+
+bspc monitor -d 1 2 3 4 5 6 7 8 9 10
+bspc config window-gap 10 
+bspc config border_width 0 
+bspc config single_monocle			false
+bspc config focus_follows_pointer	true
+bspc config split_ratio 0.5 &
+bspc config borderless_monocle   true 
+bspc config gapless_monocle      true 
+bspc config pointer_motion_interval 5 
+
+bspc rule -a mpv state=floating layer=normal rectangle 1920x1080+0+0
+bspc rule -a "file-picker" state=floating rectangle 800x800+0+0 center=true 
+xsetroot -cursor_name left_ptr &
+pgrep -x sxhkd > /dev/null || sxhkd &
+feh --bg-scale ~/Pictures/wall1.jpg &
+picom --config $HOME/.config/picom/picom.conf &
+~/.config/polybar/polybar-bspwm &
+
+if hash sxhkd >/dev/null 2>&1; then
+	pkill sxhkd
+	sleep 0.5
+	sxhkd -c "$HOME/.config/sxhkd/sxhkdrc" &
+fi
+# Kill any existing portal instances
+pkill -x xdg-desktop-portal
+pkill -x xdg-desktop-portal-termfilechooser
+
+sleep 0.5
+
+/usr/lib/xdg-desktop-portal-termfilechooser &
+/usr/lib/xdg-desktop-portal --replace &
+#polybar Main &
+#polybar workspaces &
+#polybar cpu &
+#polybar datee &
+#polybar filesystem &
+#polybar memory &
+#polybar now-playing & 
+#polybar volume &

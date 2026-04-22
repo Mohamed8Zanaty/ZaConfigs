@@ -1,0 +1,14 @@
+#!/bin/bash
+chosen=$(printf "  Shutdown\n  Reboot\n  Logout\n  Lock" | rofi -dmenu -p "Power" -theme-str '
+    window   { location: center; anchor: center; width: 250px; padding: 10px; }
+    mainbox  { spacing: 10px; }
+    inputbar { padding: 8px; }
+    listview { lines: 4; scrollbar: false; spacing: 4px; }
+    element  { padding: 10px; border-radius: 4px; }
+  ')
+case "$chosen" in
+  "  Shutdown") systemctl poweroff ;;
+  "  Reboot")   systemctl reboot ;;
+  "  Logout")   pkill -u "$USER" ;;
+  "  Lock")     betterlockscreen -l ;;
+esac

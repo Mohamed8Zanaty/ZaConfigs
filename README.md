@@ -9,6 +9,7 @@ This is My Linux Configs for Arch + bspwm
 - rofi
 - lf file-picker 
 - fastfetch
+- bspwm
 
 ## Note
 - You should put lf-picker on /usr/local/bin/ to make it work correctly.
