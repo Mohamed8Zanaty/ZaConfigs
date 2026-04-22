@@ -1,0 +1,550 @@
+# ──────────────────────────────────────────────────────────
+#  lf configuration — comprehensive open command
+#  Arch Linux + bspwm | editor: nvim
+# ──────────────────────────────────────────────────────────
+
+set editor nvim
+set previewer ~/.config/lf/previewer.sh
+set preview true
+set ratios 1:2:3            # narrow nav : file list : wide preview
+set scrolloff 5             # keep cursor away from edges while scrolling
+set hidden false
+set icons true
+set drawbox true
+set relativenumber true
+
+# ── open ───────────────────────────────────────────────────
+cmd open ${{
+    # Resolve symlinks so extension matching works reliably
+    target="$(readlink -f "$f" 2>/dev/null || echo "$f")"
+    ext="${target##*.}"
+    ext_lower="$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')"
+
+    # Helper: open detached from terminal (GUI apps)
+    gui() { setsid "$@" >/dev/null 2>&1 & }
+
+    # Helper: pick first available command
+    first_of() {
+        for cmd in "$@"; do
+            if command -v "$cmd" >/dev/null 2>&1; then
+                printf '%s' "$cmd"
+                return
+            fi
+        done
+    }
+
+    case "$ext_lower" in
+
+        # ── plain text & markup ────────────────────────────
+        txt|md|markdown|rst|asciidoc|adoc|asc|textile|wiki|org)
+            nvim "$target" ;;
+
+        # ── structured / data ──────────────────────────────
+        json|jsonc|json5|ndjson|geojson|\
+        toml|yaml|yml|xml|rss|atom|xlf|xsd|xsl|xslt)
+            nvim "$target" ;;
+
+        # ── spreadsheet / delimited data ───────────────────
+        csv|tsv|psv)
+            viewer="$(first_of libreoffice gnumeric sc-im)"
+            [ -n "$viewer" ] && gui "$viewer" "$target" || nvim "$target" ;;
+
+        # ── config / dotfiles ──────────────────────────────
+        conf|cfg|ini|env|properties|editorconfig|\
+        gitconfig|gitignore|gitattributes|gitmodules|\
+        dockerignore|hgignore|npmignore|\
+        profile|bashrc|zshrc|zshenv|zprofile|bash_profile|\
+        inputrc|xinitrc|xprofile|Xresources|xdefaults|\
+        tmux.conf|tigrc|curlrc|wgetrc|ripgreprc|\
+        flake8|pylintrc|pyproject|setup.cfg|\
+        clang-format|clang-tidy)
+            nvim "$target" ;;
+
+        # ── system / build ─────────────────────────────────
+        makefile|cmake|meson|ninja|bazel|buck|build|\
+        dockerfile|containerfile|\
+        service|socket|timer|target|mount|automount|path|slice|\
+        desktop|lnk)
+            nvim "$target" ;;
+
+        # ── source code ────────────────────────────────────
+        # Python
+        py|pyw|pyx|pxd|pxi) nvim "$target" ;;
+        # Jupyter (handled separately below — open in notebook if available)
+        ipynb)
+            if command -v jupyter >/dev/null 2>&1; then
+                gui jupyter notebook "$target"
+            else
+                nvim "$target"
+            fi ;;
+        # C / C++ / Obj-C
+        c|cpp|cc|cxx|c++|h|hpp|hh|hxx|h++|m|mm) nvim "$target" ;;
+        # Web
+        js|jsx|ts|tsx|mjs|cjs|vue|svelte|astro|mdx) nvim "$target" ;;
+        html|htm|xhtml) nvim "$target" ;;
+        css|scss|sass|less|stylus|styl) nvim "$target" ;;
+        # Systems / low-level
+        rs|go|zig|asm|s|nasm|v) nvim "$target" ;;
+        # JVM
+        java|kt|kts|groovy|gradle|scala|clj|cljs|cljc|edn) nvim "$target" ;;
+        # .NET
+        cs|fs|fsx|vb) nvim "$target" ;;
+        # Ruby / Perl / PHP
+        rb|erb|rake|gemspec|pl|pm|t|php|phtml|inc) nvim "$target" ;;
+        # Shell
+        sh|bash|zsh|fish|ps1|psm1|psd1|bat|cmd|vbs) nvim "$target" ;;
+        # Functional / Lisp family
+        hs|lhs|ml|mli|el|lisp|cl|rkt|scm|ss|fnl|janet) nvim "$target" ;;
+        # Scripting / dynamic
+        lua|vim|nvim|tcl|tk|r|jl|ex|exs|erl|hrl|nim|cr) nvim "$target" ;;
+        # Query / data
+        sql|sqlite|db|ddl|dml) nvim "$target" ;;
+        # Template
+        j2|jinja|jinja2|mustache|hbs|handlebars|ejs|tpl) nvim "$target" ;;
+        # DevOps / infra
+        tf|tfvars|hcl|nomad) nvim "$target" ;;
+        # Misc source
+        proto|thrift|avsc|graphql|gql|wgsl|glsl|frag|vert|hlsl) nvim "$target" ;;
+        # Logs
+        log|out|err|trace|diff|patch) nvim "$target" ;;
+
+        # ── LaTeX / BibTeX ─────────────────────────────────
+        tex|ltx|sty|cls|dtx|ins|bib|bbl) nvim "$target" ;;
+
+        # ── PDF ────────────────────────────────────────────
+        pdf)
+            viewer="$(first_of zathura evince okular mupdf xpdf firefox)"
+            [ -n "$viewer" ] && gui "$viewer" "$target" || gui xdg-open "$target" ;;
+
+        # ── images (raster) ────────────────────────────────
+        jpg|jpeg|jpe|jfif|png|webp|avif|heic|heif|\
+        gif|apng|bmp|tiff|tif|ppm|pgm|pbm|pnm|\
+        ico|cur|xpm|xbm)
+            viewer="$(first_of sxiv nsxiv imv imv-dir feh gimp)"
+            [ -n "$viewer" ] && gui "$viewer" "$target" || gui xdg-open "$target" ;;
+
+        # ── images (vector / source) ───────────────────────
+        svg|svgz)
+            viewer="$(first_of inkscape eog eom feh xdg-open)"
+            [ -n "$viewer" ] && gui "$viewer" "$target" ;;
+
+        xcf)  gui gimp "$target" ;;
+        psd|psb) viewer="$(first_of gimp krita)"; gui "$viewer" "$target" ;;
+        ai|eps|ps) viewer="$(first_of inkscape gimp evince)"; gui "$viewer" "$target" ;;
+        ora|kra) viewer="$(first_of krita gimp)"; gui "$viewer" "$target" ;;
+        blnd) gui blender "$target" ;;
+
+        # ── video ──────────────────────────────────────────
+        mp4|mkv|webm|avi|mov|wmv|flv|f4v|3gp|3g2|\
+        ts|m2ts|mts|m4v|ogv|vob|divx|xvid|mpeg|mpg|m2v|\
+        rm|rmvb|asf|mxf|dv|yuv)
+            player="$(first_of mpv vlc celluloid totem)"
+            [ -n "$player" ] && gui "$player" "$target" || gui xdg-open "$target" ;;
+
+        # ── audio ──────────────────────────────────────────
+        mp3|flac|ogg|opus|wav|aiff|aif|m4a|aac|wma|mka|\
+        ape|wv|tta|mpc|spx|amr|ac3|dts|mid|midi|xm|mod|s3m|it)
+            player="$(first_of mpv vlc cmus mocp mplayer)"
+            [ -n "$player" ] && gui "$player" "$target" || gui xdg-open "$target" ;;
+
+        # ── playlists ──────────────────────────────────────
+        m3u|m3u8|pls|xspf|asx|cue)
+            player="$(first_of mpv vlc)"
+            [ -n "$player" ] && gui "$player" "$target" || gui xdg-open "$target" ;;
+
+        # ── office / document ──────────────────────────────
+        odt|odp|odg|odb|odf|ods|odm|\
+        doc|docx|dot|dotx|rtf|\
+        xls|xlsx|xlsm|xlt|xltx|\
+        ppt|pptx|pot|potx)
+            gui libreoffice "$target" ;;
+
+        # ── ebooks ─────────────────────────────────────────
+        epub|mobi|azw|azw3|fb2|djvu|cbz|cbr|cb7|cbt)
+            reader="$(first_of foliate zathura calibre-ebook-viewer okular)"
+            [ -n "$reader" ] && gui "$reader" "$target" || gui xdg-open "$target" ;;
+
+        # ── archives ───────────────────────────────────────
+        zip|7z|gz|bz2|xz|zst|lz|lzma|lzo|\
+        tar|tgz|tbz2|txz|tzst|tlz|\
+        rar|z|cab|arj|lzh|ace|iso|img|deb|rpm)
+            # Try GUI manager first, fall back to terminal listing
+            manager="$(first_of thunar dolphin xarchiver ark)"
+            if [ -n "$manager" ]; then
+                gui "$manager" "$target"
+            else
+                # Show contents in a pager
+                case "$ext_lower" in
+                    zip)             atool -l "$target" | less ;;
+                    tar|tgz|tbz2|txz|tzst) tar tf "$target" | less ;;
+                    gz)              zcat "$target" | less 2>/dev/null || gunzip -c "$target" | strings | less ;;
+                    7z|rar|arj|cab|lzh|ace) 7z l "$target" | less ;;
+                    *)               atool -l "$target" 2>/dev/null | less || less "$target" ;;
+                esac
+            fi ;;
+
+        # ── disk images ────────────────────────────────────
+        iso|img)
+            gui "$(first_of thunar dolphin xdg-open)" "$target" ;;
+
+        # ── fonts ──────────────────────────────────────────
+        ttf|otf|woff|woff2|eot|ttc)
+            viewer="$(first_of gnome-font-viewer font-manager)"
+            [ -n "$viewer" ] && gui "$viewer" "$target" || gui xdg-open "$target" ;;
+
+        # ── 3-D / CAD ──────────────────────────────────────
+        stl|obj|ply|3ds|fbx|dae|gltf|glb|step|stp|iges|igs)
+            viewer="$(first_of blender f3d meshlab)"
+            [ -n "$viewer" ] && gui "$viewer" "$target" || gui xdg-open "$target" ;;
+
+        # ── torrent ────────────────────────────────────────
+        torrent)
+            client="$(first_of transmission-gtk qbittorrent deluge)"
+            [ -n "$client" ] && gui "$client" "$target" || gui xdg-open "$target" ;;
+
+        # ── Android / Java packages ────────────────────────
+        apk|jar|war|ear)
+            gui "$(first_of thunar dolphin xarchiver)" "$target" ;;
+
+        # ── Anything else — xdg-open fallback ─────────────
+        *)
+            # First check if it looks like text (heuristic: file command)
+            if file --mime-type "$target" 2>/dev/null | grep -q 'text/'; then
+                nvim "$target"
+            else
+                gui xdg-open "$target"
+            fi ;;
+    esac
+}}
+
+# ── smart new (file or directory) ─────────────────────────
+# Type a plain name   → creates a file  and opens it in nvim
+# Append a trailing / → creates the directory (mkdir -p)
+# Intermediate dirs in the path are always created as needed.
+# Examples:
+#   notes.md        → touch notes.md, then nvim notes.md
+#   src/utils/      → mkdir -p src/utils
+#   src/main.go     → mkdir -p src, touch src/main.go, nvim src/main.go
+cmd new ${{
+    printf "New (name/ = dir, name = file): "
+    read -r ans
+    [ -z "$ans" ] && exit 0          # cancelled
+
+    case "$ans" in
+        */)
+            # Directory: strip the trailing slash, create with -p
+            mkdir -p -- "${ans%/}"
+            lf -remote "send $id reload"
+            ;;
+        *)
+            # File: ensure any parent dirs exist, create, then edit
+            parent="$(dirname "$ans")"
+            [ "$parent" != "." ] && mkdir -p -- "$parent"
+            touch -- "$ans"
+            lf -remote "send $id reload"
+            lf -remote "send $id $$SHELL -c 'nvim \"$ans\"'"
+            ;;
+    esac
+}}
+
+# ── bulk rename ────────────────────────────────────────────
+cmd bulk-rename ${{
+    index=$(mktemp /tmp/lf-bulk-rename.XXXXXX)
+    if [ -n "$fs" ]; then
+        echo "$fs" > "$index"
+    else
+        echo "$f" > "$index"
+    fi
+    index_edit=$(mktemp /tmp/lf-bulk-rename.XXXXXX)
+    cat "$index" > "$index_edit"
+    $EDITOR "$index_edit"
+    if [ "$(wc -l < "$index")" -eq "$(wc -l < "$index_edit")" ]; then
+        paste "$index" "$index_edit" | while IFS="$(printf '\t')" read -r src dst; do
+            [ "$src" != "$dst" ] && mv -- "$src" "$dst"
+        done
+    else
+        echo "Line count changed — rename aborted." >&2
+    fi
+    rm -f "$index" "$index_edit"
+    lf -remote "send $id unselect"
+    lf -remote "send $id reload"
+}}
+
+# ── create directory ───────────────────────────────────────
+cmd mkdir ${{
+    printf "Directory name: "
+    read -r ans
+    [ -z "$ans" ] && exit 0
+    mkdir -p -- "$ans"
+    lf -remote "send $id reload"
+}}
+
+# ── create file ────────────────────────────────────────────
+cmd touch ${{
+    printf "File name: "
+    read -r ans
+    [ -z "$ans" ] && exit 0
+    touch -- "$ans"
+    lf -remote "send $id reload"
+}}
+
+# ── trash (requires trash-cli) ─────────────────────────────
+cmd trash %{{
+    trash-put $fx && lf -remote "send $id reload"
+}}
+
+# ── extract archive(s) ────────────────────────────────────
+# Supports: tar.*, zip, 7z, rar, gz, bz2, xz, zst, lz4, lzma,
+#           lzo, Z, cab, iso, deb, rpm, apk, jar, war, ear,
+#           cb{z,r,7,t} (comics), whl (Python), nupkg (.NET)
+# • Works on the current file OR all selected files ($fx)
+# • Single-entry archives are extracted flat (no extra folder)
+# • Multi-entry archives go into a same-name subdirectory
+# • Pure compressed single files (*.gz not *.tar.gz) are
+#   decompressed in-place, preserving the original by default
+cmd extract ${{
+    set -f   # disable glob expansion on $fx
+
+    # ── helpers ──────────────────────────────────────────
+    need() {
+        command -v "$1" >/dev/null 2>&1 || {
+            printf 'extract: command not found: %s\n' "$1" >&2
+            return 1
+        }
+    }
+
+    # Count top-level entries inside an archive.
+    # Returns the count so callers can decide flat vs subdir.
+    _count_entries() {
+        local f="$1" flo
+        flo="$(printf '%s' "$f" | tr '[:upper:]' '[:lower:]')"
+        case "$flo" in
+            *.tar.gz|*.tgz)            tar tzf  "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.tar.bz2|*.tbz2)          tar tjf  "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.tar.xz|*.txz)            tar tJf  "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.tar.zst|*.tzst)          tar -I unzstd -tf "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.tar.lz4)                 tar -I lz4    -tf "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.tar.lzo)                 tar -I lzop   -tf "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.tar.lzma|*.tlz)          tar --lzma -tf "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.tar)                     tar tf   "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.zip|*.jar|*.war|*.ear|\
+            *.whl|*.nupkg|*.apk|\
+            *.cbz)                     unzip -Z1 "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.7z|*.cab|*.iso|\
+            *.cbr|*.cb7)               7z l -ba "$f" 2>/dev/null | awk '{print $NF}' | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.rar|*.cbr)               unrar lb "$f" 2>/dev/null | awk -F/ '{print $1}' | sort -u | wc -l ;;
+            *.deb)                     echo 2 ;;   # always extract into subdir
+            *.rpm)                     echo 2 ;;
+            *)                         echo 1 ;;
+        esac
+    }
+
+    # Derive a clean destination dir name from filename:
+    #   foo.tar.gz  → foo
+    #   bar.zip     → bar
+    _destdir() {
+        local base
+        base="$(basename "$1")"
+        # Strip up to two known extensions
+        base="${base%.tar.gz}"
+        base="${base%.tar.bz2}"
+        base="${base%.tar.xz}"
+        base="${base%.tar.zst}"
+        base="${base%.tar.lz4}"
+        base="${base%.tar.lzma}"
+        base="${base%.tar.lzo}"
+        base="${base%.tar.Z}"
+        base="${base%.tar}"
+        base="${base%.tgz}"
+        base="${base%.tbz2}"
+        base="${base%.txz}"
+        base="${base%.tzst}"
+        base="${base%.tlz}"
+        base="${base%.zip}"
+        base="${base%.7z}"
+        base="${base%.rar}"
+        base="${base%.gz}"
+        base="${base%.bz2}"
+        base="${base%.xz}"
+        base="${base%.zst}"
+        base="${base%.lz4}"
+        base="${base%.lzma}"
+        base="${base%.lzo}"
+        base="${base%.Z}"
+        base="${base%.cab}"
+        base="${base%.iso}"
+        base="${base%.deb}"
+        base="${base%.rpm}"
+        base="${base%.cbz}"
+        base="${base%.cbr}"
+        base="${base%.cb7}"
+        base="${base%.cbt}"
+        base="${base%.jar}"
+        base="${base%.war}"
+        base="${base%.ear}"
+        base="${base%.apk}"
+        base="${base%.whl}"
+        base="${base%.nupkg}"
+        printf '%s' "$base"
+    }
+
+    # ── per-file extraction ───────────────────────────────
+    _extract_one() {
+        local f="$1" flo dest entries
+        flo="$(printf '%s' "$f" | tr '[:upper:]' '[:lower:]')"
+        dest="$(_destdir "$f")"
+        entries="$(_count_entries "$f")"
+
+        # If more than one top-level entry, extract into a subdir
+        if [ "$entries" -gt 1 ]; then
+            mkdir -p "$dest"
+            local into="$dest"
+        else
+            local into="."
+        fi
+
+        printf 'Extracting %s...\n' "$(basename "$f")"
+
+        case "$flo" in
+            # ── tar family ──────────────────────────────
+            *.tar.gz|*.tgz)
+                need tar && tar xzf  "$f" -C "$into" ;;
+            *.tar.bz2|*.tbz2)
+                need tar && tar xjf  "$f" -C "$into" ;;
+            *.tar.xz|*.txz)
+                need tar && tar xJf  "$f" -C "$into" ;;
+            *.tar.zst|*.tzst)
+                need tar && need unzstd && tar -I unzstd -xf "$f" -C "$into" ;;
+            *.tar.lz4)
+                need tar && need lz4    && tar -I lz4    -xf "$f" -C "$into" ;;
+            *.tar.lzo)
+                need tar && need lzop   && tar -I lzop   -xf "$f" -C "$into" ;;
+            *.tar.lzma|*.tlz)
+                need tar && tar --lzma -xf "$f" -C "$into" ;;
+            *.tar.z|*.tar.Z)
+                need tar && tar xZf  "$f" -C "$into" ;;
+            *.tar)
+                need tar && tar xf   "$f" -C "$into" ;;
+
+            # ── zip family ──────────────────────────────
+            *.zip|*.cbz|*.whl|*.nupkg)
+                need unzip && unzip -q "$f" -d "$into" ;;
+            *.jar|*.war|*.ear)
+                need unzip && unzip -q "$f" -d "$into" ;;
+            *.apk)
+                need unzip && unzip -q "$f" -d "$into" ;;
+
+            # ── 7-zip (handles 7z, cab, iso, cb7, rar) ──
+            *.7z|*.cb7)
+                need 7z && 7z x -o"$into" "$f" ;;
+            *.cab)
+                need 7z && 7z x -o"$into" "$f" ;;
+            *.iso)
+                need 7z && 7z x -o"$into" "$f" ;;
+
+            # ── rar / cbr ───────────────────────────────
+            *.rar|*.cbr)
+                if command -v unrar >/dev/null 2>&1; then
+                    unrar x "$f" "$into/"
+                elif command -v 7z >/dev/null 2>&1; then
+                    7z x -o"$into" "$f"
+                else
+                    printf 'extract: unrar or 7z required for .rar files\n' >&2
+                    return 1
+                fi ;;
+
+            # ── cbt (tar-based comic) ────────────────────
+            *.cbt)
+                need tar && tar xf "$f" -C "$into" ;;
+
+            # ── single compressed files ─────────────────
+            # These decompress a single file; the -k flag keeps
+            # the original. Remove -k if you prefer in-place.
+            *.gz)
+                need gunzip  && gunzip  -k "$f" ;;
+            *.bz2)
+                need bunzip2 && bunzip2 -k "$f" ;;
+            *.xz)
+                need unxz    && unxz    -k "$f" ;;
+            *.zst)
+                need unzstd  && unzstd  -k "$f" ;;
+            *.lz4)
+                need lz4     && lz4     -dk "$f" ;;
+            *.lzma)
+                need unlzma  && unlzma  -k "$f" ;;
+            *.lzo)
+                need lzop    && lzop    -dk "$f" ;;
+            *.z|*.Z)
+                need uncompress && uncompress "$f" ;;
+
+            # ── deb / rpm ───────────────────────────────
+            *.deb)
+                need ar
+                mkdir -p "$dest"
+                ar x "$f" --output="$dest" ;;
+            *.rpm)
+                need rpm2cpio && need cpio
+                mkdir -p "$dest"
+                (cd "$dest" && rpm2cpio "../$f" | cpio -idmv) ;;
+
+            *)
+                printf 'extract: unsupported format: %s\n' "$f" >&2
+                return 1 ;;
+        esac
+
+        printf 'Done: %s\n' "$(basename "$f")"
+    }
+
+    # ── run on selection or current file ─────────────────
+    # $fx contains all selected files (newline-separated);
+    # falls back to $f (current file) when nothing selected.
+    targets="${fx:-$f}"
+    printf '%s\n' "$targets" | while IFS= read -r item; do
+        [ -f "$item" ] && _extract_one "$item"
+    done
+
+    lf -remote "send $id reload"
+}}
+
+# ── zip selection ──────────────────────────────────────────
+cmd zip ${{
+    printf "Archive name (without .zip): "
+    read -r ans
+    [ -z "$ans" ] && exit 0
+    zip -r "${ans}.zip" $fx
+}}
+
+# ── copy path to clipboard ─────────────────────────────────
+cmd copy-path %{{
+    printf '%s' "$f" | xclip -selection clipboard
+    lf -remote "send $id echo 'Path copied: $f'"
+}}
+
+# ── open file manager in current dir ──────────────────────
+cmd open-gui %{{ setsid thunar "$PWD" >/dev/null 2>&1 & }}
+
+# ── fzf jump ──────────────────────────────────────────────
+cmd fzf-jump ${{
+    res="$(find . -maxdepth 5 ! -path '*/\.*' 2>/dev/null | fzf --reverse --header='Jump to location')"
+    if [ -d "$res" ]; then
+        lf -remote "send $id cd '$res'"
+    elif [ -f "$res" ]; then
+        lf -remote "send $id select '$res'"
+    fi
+}}
+
+# ── key bindings ───────────────────────────────────────────
+map <enter>   open
+map gi        $setsid sxiv -t "$(dirname "$f")" >/dev/null 2>&1 &
+map R         bulk-rename
+map a         new           # smart create: name → file, name/ → dir
+map md        mkdir
+map mf        touch
+map D         trash
+map x         extract
+map z         zip
+map Y         copy-path
+map F         fzf-jump
+map gf        open-gui
+map .         set hidden!          # toggle hidden files
+map <esc>     quit
